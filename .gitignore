@@ -1,0 +1,21 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+db.sqlite3
+
+# Node.js
+node_modules/
+.next/
+out/
+build/
+.env.local
+.env.production.local
+.env.development.local
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
