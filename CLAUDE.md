@@ -11,11 +11,12 @@
 
 ## 핵심 아키텍처
 
-### 오케스트레이션 모델 (Stage A — Antigravity-agent 주도)
-- **오케스트레이션은 백엔드의 외부 LLM API 호출이 아니라, Antigravity의 `evolving_companion` 서브에이전트가 수행한다.**
-- `evolving_companion`은 `define_subagent`/`invoke_subagent` 권한으로 하위 에이전트(`scraper_agent`, `parser_agent` 등)를 스폰·지시하고 결과를 취합하며, `.agents/user_profile.md`에 기억을 갱신해 자가 진화한다.
-- 정의는 [`antigravity/`](antigravity/)에 버전 관리로 체크인되어 있다(재시작 소실 방지).
-- 백엔드(`backend/`)는 **영속·관측 계층**: Task/Log/Cost/Checkpoint 저장 + 대시보드. 직접 LLM을 호출하지 않는다.
+### 핵심 모델 — 기억하고 진화하는 companion
+- **핵심은 "축적되고 진화하는 사용자 맥락"이다.** `evolving_companion`은 사용자 스타일·포맷·습관을 `.agents/user_profile.md`에 장기 기억으로 쌓고, 매 작업 종료 시 자기비평을 거쳐 `Current Evolved Standards`/`Evolution Log`를 갱신해 진화한다.
+- 이 기억이 차별점(해자)이다. 기능이 아니라 "그 사용자에 대해 쌓인 맥락"이 흉내 낼 수 없는 부분.
+- **오케스트레이션(하위 에이전트 스폰)은 보조 능력이다.** 대형 작업일 때만 `define_subagent`/`invoke_subagent`로 하위 팀을 꾸린다. 외부 LLM API로 오케스트레이션하지 않고 Antigravity 에이전트 내부에서 수행.
+- 정의·기억 템플릿은 [`antigravity/`](antigravity/)에 버전 관리로 체크인(재시작 소실 방지).
+- 백엔드(`backend/`)는 **영속·관측 계층**: Task/Log/Cost 저장 + 대시보드. 직접 LLM을 호출하지 않는다.
 
 ### 하이브리드 검증 (Hybrid Validation)
 1. **L1 Micro-validation**: 워커 에이전트 자체 스키마/타입 검증 + 최대 3회 재시도

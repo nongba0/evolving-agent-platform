@@ -53,12 +53,13 @@ LLM의 환각(Hallucination)과 오류를 통제하기 위해 2단계 검증을 
 1. **동적 파이프라인 생성**: `orchestrator.py`의 하드코딩된 steps를 제거하고, 사용자의 프롬프트를 분석해 동적으로 Sub-task를 생성하도록 업그레이드.
 2. **Frontend-Backend API 연동**: Next.js 대시보드에서 FastAPI로 실제 Task 생성 요청을 보내고, Polling이나 WebSocket으로 상태 업데이트 받기.
 
-## 7. 아키텍처 갱신 (2026-06-13) — 자율 오케스트레이션 전환
+## 7. 아키텍처 갱신 (2026-06-13) — 기억·진화 중심으로 재정의
 
 이전(5·6장)의 "백엔드 `orchestrator.py`가 LLM을 호출해 파이프라인을 돌리는" 모델을 폐기하고,
-**오케스트레이션을 Antigravity의 `evolving_companion` 서브에이전트가 전담**하도록 전환했다.
+**핵심을 `evolving_companion`의 "축적·진화하는 사용자 맥락(기억)"으로 재정의**했다.
 
-- **결정**: 오케스트레이션은 외부 LLM API 호출이 아니라 Antigravity 내부 서브에이전트 협업으로 동작한다.
+- **핵심 (재확인)**: 본질은 오케스트레이션이 아니라 **기억·자가진화 개인화**다. `.agents/user_profile.md`에 사용자 스타일·포맷·습관을 쌓고 매 작업마다 자기비평으로 진화하는 것이 차별점(해자). 오케스트레이션(하위 에이전트 스폰)은 대형 작업용 **보조 능력**일 뿐.
+- **결정**: (보조 능력인) 오케스트레이션도 외부 LLM API 호출이 아니라 Antigravity 내부 서브에이전트 협업으로 동작한다.
 - **메커니즘**: `evolving_companion`이 `define_subagent`/`invoke_subagent`/`manage_subagents` 권한으로 하위 에이전트(`scraper_agent`, `parser_agent` 등)를 동적으로 스폰·지시하고, 결과를 취합해 보고하며, `.agents/user_profile.md`에 기억을 갱신해 자가 진화한다.
 - **정의 위치**: 서브에이전트 정의가 재시작 시 소실되는 문제를 해결하기 위해 [`antigravity/agents/evolving_companion/agent.json`](antigravity/agents/evolving_companion/agent.json)으로 레포에 버전 관리 체크인. 세션 시작 시 이 정의를 다시 로드.
 - **백엔드 역할 변경**: `backend/orchestrator.py`는 LLM을 호출하지 않는 위임 coordinator로 축소(태스크를 `delegated`로 기록). 백엔드는 **영속·관측 계층**이 되어, 에이전트가 write-back 엔드포인트(`POST /api/tasks/{id}/logs|costs|status`)로 보고한 진행상황을 대시보드에 반영한다.
