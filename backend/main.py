@@ -7,9 +7,10 @@ import uuid
 from database import engine, Base, get_db
 from models import Settings, Task, Log, TokenCost
 from schemas import (
-    SettingsBase, SettingsResponse, 
-    TaskCreate, TaskResponse, 
-    LogResponse, TokenCostResponse
+    SettingsBase, SettingsResponse,
+    TaskCreate, TaskResponse, TaskStatusUpdate,
+    LogResponse, LogCreate,
+    TokenCostResponse, TokenCostCreate
 )
 from orchestrator import run_task_pipeline
 
@@ -122,3 +123,46 @@ def get_task_logs(task_id: str, db: Session = Depends(get_db)):
 def get_task_costs(task_id: str, db: Session = Depends(get_db)):
     costs = db.query(TokenCost).filter(TokenCost.task_id == task_id).order_by(TokenCost.timestamp.asc()).all()
     return costs
+
+# ---------------------------------------------------------------------------
+# Agent write-back endpoints
+# The Antigravity 'evolving_companion' orchestrator (and its child subagents)
+# report progress, status, and cost here so the dashboard reflects the run.
+# ---------------------------------------------------------------------------
+def _require_task(task_id: str, db: Session) -> Task:
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+@app.post("/api/tasks/{task_id}/status", response_model=TaskResponse)
+def set_task_status(task_id: str, body: TaskStatusUpdate, db: Session = Depends(get_db)):
+    task = _require_task(task_id, db)
+    task.status = body.status
+    db.commit()
+    db.refresh(task)
+    return task
+
+@app.post("/api/tasks/{task_id}/logs", response_model=LogResponse, status_code=201)
+def add_task_log(task_id: str, body: LogCreate, db: Session = Depends(get_db)):
+    _require_task(task_id, db)
+    log = Log(task_id=task_id, node_name=body.node_name, message=body.message, log_level=body.log_level)
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+    return log
+
+@app.post("/api/tasks/{task_id}/costs", response_model=TokenCostResponse, status_code=201)
+def add_task_cost(task_id: str, body: TokenCostCreate, db: Session = Depends(get_db)):
+    _require_task(task_id, db)
+    cost = TokenCost(
+        task_id=task_id,
+        node_name=body.node_name,
+        input_tokens=body.input_tokens,
+        output_tokens=body.output_tokens,
+        estimated_cost=body.estimated_cost,
+    )
+    db.add(cost)
+    db.commit()
+    db.refresh(cost)
+    return cost

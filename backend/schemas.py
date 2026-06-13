@@ -15,6 +15,20 @@ class SettingsResponse(SettingsBase):
 class TaskCreate(BaseModel):
     prompt: str
 
+class TaskStatusUpdate(BaseModel):
+    status: str
+
+class LogCreate(BaseModel):
+    node_name: str
+    message: str
+    log_level: str = "info"
+
+class TokenCostCreate(BaseModel):
+    node_name: str
+    input_tokens: int = 0
+    output_tokens: int = 0
+    estimated_cost: float = 0.0
+
 class TaskResponse(BaseModel):
     id: str
     prompt: str

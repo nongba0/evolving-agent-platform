@@ -5,11 +5,17 @@
 작업이 크면 자동으로 여러 에이전트로 분할하여 협업 처리.
 
 ## 기술 스택
-- Backend: Python 3.11+, FastAPI, SQLAlchemy, SQLite (dev), google-genai (Gemini API)
+- Orchestration: Antigravity `evolving_companion` 서브에이전트 (define/invoke_subagent)
+- Backend: Python 3.11+, FastAPI, SQLAlchemy, SQLite (dev) — 영속·관측 계층 (LLM 미호출)
 - Frontend: Next.js (App Router), TypeScript, TailwindCSS
-- LLM: Gemini 3.5 Flash (`gemini-3.5-flash`)
 
 ## 핵심 아키텍처
+
+### 오케스트레이션 모델 (Stage A — Antigravity-agent 주도)
+- **오케스트레이션은 백엔드의 외부 LLM API 호출이 아니라, Antigravity의 `evolving_companion` 서브에이전트가 수행한다.**
+- `evolving_companion`은 `define_subagent`/`invoke_subagent` 권한으로 하위 에이전트(`scraper_agent`, `parser_agent` 등)를 스폰·지시하고 결과를 취합하며, `.agents/user_profile.md`에 기억을 갱신해 자가 진화한다.
+- 정의는 [`antigravity/`](antigravity/)에 버전 관리로 체크인되어 있다(재시작 소실 방지).
+- 백엔드(`backend/`)는 **영속·관측 계층**: Task/Log/Cost/Checkpoint 저장 + 대시보드. 직접 LLM을 호출하지 않는다.
 
 ### 하이브리드 검증 (Hybrid Validation)
 1. **L1 Micro-validation**: 워커 에이전트 자체 스키마/타입 검증 + 최대 3회 재시도
@@ -26,10 +32,10 @@
 - UI 텍스트: 영어 (EvoAgent Console 테마)
 
 ### Python / FastAPI
-- `call_gemini_with_cost()` 통해서만 LLM 호출 (비용 추적 보장)
+- **백엔드에서 LLM 직접 호출 금지.** 오케스트레이션은 Antigravity `evolving_companion`이 담당하고, 백엔드는 영속·관측만 한다.
+- `orchestrator.py`는 태스크를 `delegated` 상태로 기록하는 coordinator일 뿐 (LLM 호출 없음).
+- 에이전트가 보고하는 진행상황은 write-back 엔드포인트(`POST /api/tasks/{id}/logs|costs|status`)로 저장된다.
 - 새 모델: `models.py` + `schemas.py` 동시 추가
-- `.env`에 `GEMINI_API_KEY` 저장. 코드에 하드코딩 절대 금지
-- `orchestrator.py`의 체크포인트/비용 로깅 흐름 보존 필수
 
 ### Next.js / TypeScript
 - App Router (`src/app/`)
@@ -42,10 +48,10 @@ backend/
 ├── main.py           # FastAPI 앱 + 라우터
 ├── models.py         # SQLAlchemy ORM
 ├── schemas.py        # Pydantic 스키마
-├── orchestrator.py   # 멀티 에이전트 파이프라인 핵심
+├── orchestrator.py   # 위임 coordinator (LLM 호출 없음, 태스크를 delegated 처리)
 ├── database.py       # DB 설정
 ├── requirements.txt
-└── .env              # API 키 (git 금지)
+└── .env              # 환경변수 (git 금지)
 
 frontend/
 ├── src/app/page.tsx  # 메인 대시보드
@@ -59,7 +65,7 @@ frontend/
 - 통합: `uvicorn main:app --reload` + `npm run dev`
 
 ### 금지
-- `call_gemini_with_cost()` 우회 직접 Gemini API 호출 금지
+- 백엔드 코드에서 외부 LLM API 직접 호출 금지 (오케스트레이션은 Antigravity 에이전트 전담)
 - `db.sqlite3` 직접 수정 금지
 - `.env` Git 커밋 금지
 
